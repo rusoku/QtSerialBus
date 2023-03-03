@@ -2,11 +2,14 @@ cmake_minimum_required(VERSION 3.24)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
-project(rusokucan)
+project(rusokucan
+        DESCRIPTION "Qt can bus plugin for Rusoku TouCAN adapters"
+        HOMEPAGE_URL "https://www.rusoku.com"
+        LANGUAGES CXX C
+        )
 
-set(QT_REPO_MODULE_VERSION "5.15.2")
-set(QT_REPO_MODULE_PRERELEASE_VERSION_SEGMENT "alpha1")
 set(QT_USE_FIXED_QT_ADD_RESOURCE_BASE TRUE)
+#set(CMAKE_MAKE_PROGRAM "ninja")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
@@ -17,17 +20,10 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
-#set(CMAKE_OSX_DEPLOYMENT_TARGET 11)
 set(CMAKE_OSX_ARCHITECTURES x86_64)
 
-#list(APPEND CMAKE_PREFIX_PATH
-#        ${CMAKE_PREFIX_PATH="~/Qt/5.15.2/clang_64"},
-#        $
-
-#list(APPEND CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64"
-#                            "C:/Qt/5.15.2/msvc2019_64")
-
-set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64")
+set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64"
+                        "C:/Qt/5.15.2/msvc2019_64")
 
 find_package(Qt5 COMPONENTS
         Core
@@ -53,8 +49,6 @@ add_library(rusokucan SHARED ${SOURCE_FILES} ${HEADERS_FILES} ${OTHER_FILES})
 target_link_libraries(rusokucan
         Qt5::Core
         Qt5::SerialBus)
-
-#add_definitions(-DLINK_RUSOKUCANLIB=FALSE)
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     add_compile_definitions(rusokucan QT_DEBUG)

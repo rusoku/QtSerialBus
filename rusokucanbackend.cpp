@@ -49,7 +49,7 @@
 
 
 #ifdef Q_OS_WIN32
-   include <QtCore/qwineventnotifier.h>
+//   include <QtCore/qwineventnotifier.h>
 #else
 //   include <QtCore/qsocketnotifier.h>
 #endif
@@ -99,6 +99,7 @@ RusokuCanBackend::RusokuCanBackend(const QString &name, QObject *parent)
     Q_D(RusokuCanBackend);
 
 //#define Q_D(Class) Class##Private * const d = d_func()
+//RusokuCanBackendPrivate *const d = d_func()
 
     d->setupChannel(name.toLatin1());
     d->setupDefaultConfigurations();
