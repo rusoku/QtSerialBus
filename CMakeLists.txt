@@ -38,8 +38,7 @@ set(SOURCE_FILES
 set(HEADERS_FILES
         rusokucanbackend.h
         rusokucanbackend_p.h
-        rusoku_symbols_p.h
-        #can_api.h)
+        rusoku_symbols_p.h)
 
 set(OTHER_FILES
         plugin.json)
