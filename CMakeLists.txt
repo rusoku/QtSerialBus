@@ -42,18 +42,17 @@ set(SOURCE_FILES
 set(HEADERS_FILES
         rusokucanbackend.h
         rusokucanbackend_p.h
-        )
+        rusoku_symbols_p.h
+        #can_api.h)
 
 set(OTHER_FILES
-        plugin.json
-        )
+        plugin.json)
 
 add_library(rusokucan SHARED ${SOURCE_FILES} ${HEADERS_FILES} ${OTHER_FILES})
 
 target_link_libraries(rusokucan
         Qt5::Core
-        Qt5::SerialBus
-        )
+        Qt5::SerialBus)
 
 #add_definitions(-DLINK_RUSOKUCANLIB=FALSE)
 
