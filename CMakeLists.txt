@@ -5,8 +5,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 project(rusokucan
         DESCRIPTION "Qt can bus plugin for Rusoku TouCAN adapters"
         HOMEPAGE_URL "https://www.rusoku.com"
-        LANGUAGES CXX C
-        )
+        LANGUAGES CXX C)
 
 set(QT_USE_FIXED_QT_ADD_RESOURCE_BASE TRUE)
 #set(CMAKE_MAKE_PROGRAM "ninja")
@@ -22,8 +21,10 @@ endif()
 
 set(CMAKE_OSX_ARCHITECTURES x86_64)
 
-set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64"
-                        "C:/Qt/5.15.2/msvc2019_64")
+#set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64"
+#                        "C:/Qt/5.15.2/msvc2019_64")
+
+set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64")
 
 find_package(Qt5 COMPONENTS
         Core
@@ -32,13 +33,15 @@ find_package(Qt5 COMPONENTS
 
 set(SOURCE_FILES
         main.cpp
-        rusokucanbackend.cpp
-        rusokucanbackend_p.cpp)
+        rusokucanbackend.cpp)
+        #rusokucanbackend_p.cpp
 
 set(HEADERS_FILES
+        #can_api.h
+        CANAPI_Types.h
         rusokucanbackend.h
         rusokucanbackend_p.h
-        rusoku_symbols_p.h)
+        TouCAN_Defines.h)
 
 set(OTHER_FILES
         plugin.json)
@@ -57,5 +60,8 @@ else()
 endif()
 
 set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
-#set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
-set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
+set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
+#set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
+
+add_custom_command(TARGET rusokucan POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}/plugins/canbus)

@@ -38,8 +38,13 @@
 #ifndef RUSOKUCANBACKEND_P_H
 #define RUSOKUCANBACKEND_P_H
 
-#include "rusokucanbackend.h"
-//#include "rusokucan_symbols_p.h"
+#include <QtSerialBus/qcanbusframe.h>
+#include <QtSerialBus/qcanbusdevice.h>
+#include <QtSerialBus/qcanbusdeviceinfo.h>
+
+#include <QtCore/qvariant.h>
+#include <QtCore/qvector.h>
+#include <QtCore/qlist.h>
 
 #if defined(Q_OS_WIN32)
     #include <qt_windows.h>
@@ -84,7 +89,8 @@ public:
 
     bool isFlexibleDatarateEnabled = false;
     bool isOpen = false;
-    //TPCANHandle channelIndex = PCAN_NONEBUS;
+    int32_t channelIndex = -1;
+    int handle;
     QTimer *writeNotifier = nullptr;
 
 #if defined(Q_OS_WIN32)

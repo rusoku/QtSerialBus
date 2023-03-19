@@ -37,7 +37,7 @@
 
 #include "rusokucanbackend.h"
 #include "rusokucanbackend_p.h"
-//#include "rusokucan_symbols_p.h"
+#include "rusokucan_symbols_p.h"
 
 #include <QtSerialBus/qcanbusdevice.h>
 
@@ -59,18 +59,93 @@ QT_BEGIN_NAMESPACE
 
 Q_DECLARE_LOGGING_CATEGORY(QT_CANBUS_PLUGINS_RUSOKUCAN)
 
+#ifndef LINK_LIBRTSTATIC
+Q_GLOBAL_STATIC(QLibrary, rusokucanLibrary)
+#endif
+
 bool RusokuCanBackend::canCreate(QString *errorReason)
 {
-    //qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot load library: ");
-    //QMessageLogger();
-    qDebug() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
-
+#ifdef LINK_LIBRTSTATIC
     return true;
+#else
+
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::canCreate()");
+
+    static bool symbolsResolved = resolveRusokuCanSymbols(rusokucanLibrary());
+    if (Q_UNLIKELY(!symbolsResolved)) {
+        qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot load library: %ls",
+                   qUtf16Printable(rusokucanLibrary()->errorString()));
+        *errorReason = "Cannot load libUVCANTOU dynamic library";
+
+        return false;
+    }
+    return true;
+#endif
 }
+
+/// \brief  CAN channel information
+struct SChannelInfo {
+    int32_t m_nChannelNo;  ///< channel no. at actual index in the interface list
+    char m_szDeviceName[CANPROP_MAX_BUFFER_SIZE];  ///< device name at actual index in the interface list
+    char m_szDeviceDllName[CANPROP_MAX_BUFFER_SIZE];  ///< file name of the DLL at actual index in the interface list
+    int32_t m_nLibraryId;  ///< library id at actual index in the interface list
+    char m_szVendorName[CANPROP_MAX_BUFFER_SIZE];  ///< vendor name at actual index in the interface list
+    uint32_t m_nSerialNumber;
+};
 
 QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
 {
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::interfaces()");
+
     QList<QCanBusDeviceInfo> result;
+    SChannelInfo info = {};
+
+    //memset(&info, 0, sizeof(SChannelInfo));
+    info.m_nChannelNo = (-1);
+    int state;
+    can_mode_t opMode = {};
+    opMode.byte = CANMODE_DEFAULT;
+    can_bitrate_t bitrate = {};
+    bitrate.index = CANBTR_INDEX_500K;
+    int rc = 0;
+
+        for(int x = 0; x < TOUCAN_BOARDS; x++)
+        {
+            if(x == 0)
+                rc = can_property((-1), CANPROP_SET_FIRST_CHANNEL, NULL, 0U);
+            else
+                rc = can_property((-1), CANPROP_SET_NEXT_CHANNEL, NULL, 0U);
+
+            if (CANERR_NOERROR == rc) {
+                can_property((-1), CANPROP_GET_CHANNEL_NO, (void *) &info.m_nChannelNo,
+                                                                                sizeof(int32_t));
+                can_property((-1), CANPROP_GET_CHANNEL_NAME, (void *) &info.m_szDeviceName,
+                                                                                CANPROP_MAX_BUFFER_SIZE);
+                can_property((-1), CANPROP_GET_CHANNEL_VENDOR_NAME, (void *) &info.m_szVendorName,
+                                                                                CANPROP_MAX_BUFFER_SIZE);
+                rc = can_test(info.m_nChannelNo, opMode.byte, NULL, &state);
+                //m_serial = can_hardware(info.m_nChannelNo);
+
+                if ((0 <= rc) && (state == CANBRD_PRESENT))
+                {
+                    can_init(info.m_nChannelNo, 0, NULL);
+                    can_property(info.m_nChannelNo, TOUCAN_GET_SERIAL_NUMBER, &info.m_nSerialNumber, sizeof(int32_t));
+                    char string[CANPROP_MAX_BUFFER_SIZE] = "(unknown)";
+                    snprintf(string, 8, "%08x)",info.m_nSerialNumber);
+                    can_exit(info.m_nChannelNo);
+
+                    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "TOUCAN_GET_SERIAL_NUMBER: %s", string);
+                    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_NO: %d", info.m_nChannelNo);
+                    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_NAME: %s", info.m_szDeviceName);
+                    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_VENDOR_NAME: %s", info.m_szVendorName);
+
+                    result.append(std::move(createDeviceInfo(QLatin1String(info.m_szDeviceName), QLatin1String(string),
+                                                          QLatin1String(info.m_szVendorName), info.m_nChannelNo,
+                                                          false, false)));
+                }
+            }
+        }
+
 /*
     static QCanBusDeviceInfo createDeviceInfo(const QString &name,
                                               bool isVirtual = false,
@@ -80,15 +155,6 @@ QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
                                               const QString &description, int channel,
                                               bool isVirtual, bool isFlexibleDataRateCapable);
 */
-
-    result.append(std::move(createDeviceInfo(QLatin1String("usb0"),
-                                             "00000001", QLatin1String("TouCAN adapter"),
-                                             1, false, false)));
-
-    result.append(std::move(createDeviceInfo(QLatin1String("usb1"),
-                                             "00000002", QLatin1String("TouCAN adapter"),
-                                             1, false, false)));
-
     return result;
 }
 
@@ -97,6 +163,9 @@ RusokuCanBackend::RusokuCanBackend(const QString &name, QObject *parent)
         , d_ptr(new RusokuCanBackendPrivate(this))
 {
     Q_D(RusokuCanBackend);
+
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::RusokuCanBackend() - %ls",
+                                                                qUtf16Printable(name));
 
 //#define Q_D(Class) Class##Private * const d = d_func()
 //RusokuCanBackendPrivate *const d = d_func()
@@ -115,6 +184,8 @@ RusokuCanBackend::~RusokuCanBackend()
 {
     Q_D(RusokuCanBackend);
 
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::~RusokuCanBackend()");
+
     if (d->isOpen)
         close();
 
@@ -125,6 +196,8 @@ bool RusokuCanBackend::open()
 {
     Q_D(RusokuCanBackend);
 
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::open()");
+
     if (!d->isOpen) {
         if (Q_UNLIKELY(!d->open()))
             return false;
@@ -132,10 +205,17 @@ bool RusokuCanBackend::open()
         // Apply all stored configurations except bitrate, because
         // the bitrate cannot be changed after opening the device
         const auto keys = configurationKeys();
+
+        qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- total keys: %d", keys.count());
+
         for (int key : keys) {
+
             if (key == QCanBusDevice::BitRateKey || key == QCanBusDevice::DataBitRateKey)
                 continue;
             const QVariant param = configurationParameter(key);
+
+            qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- key = %d, value = %ls", key, qUtf16Printable(param.toString()));
+
             const bool success = d->setConfigurationParameter(key, param);
             if (Q_UNLIKELY(!success)) {
                 qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot apply parameter: %d with value: %ls.",
@@ -152,6 +232,8 @@ void RusokuCanBackend::close()
 {
     Q_D(RusokuCanBackend);
 
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::close()");
+
     d->close();
 
     setState(QCanBusDevice::UnconnectedState);
@@ -161,6 +243,9 @@ void RusokuCanBackend::setConfigurationParameter(int key, const QVariant &value)
 {
     Q_D(RusokuCanBackend);
 
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::setConfigurationParameter()");
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- key = %d, value = %ls", key, qUtf16Printable(value.toString()));
+
     if (d->setConfigurationParameter(key, value))
         QCanBusDevice::setConfigurationParameter(key, value);
 }
@@ -168,6 +253,8 @@ void RusokuCanBackend::setConfigurationParameter(int key, const QVariant &value)
 bool RusokuCanBackend::writeFrame(const QCanBusFrame &newData)
 {
     Q_D(RusokuCanBackend);
+
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::writeFrame()");
 
     if (Q_UNLIKELY(state() != QCanBusDevice::ConnectedState))
         return false;
@@ -186,8 +273,8 @@ bool RusokuCanBackend::writeFrame(const QCanBusFrame &newData)
 
     enqueueOutgoingFrame(newData);
 
-    if (!d->writeNotifier->isActive())
-        d->writeNotifier->start();
+    //if (!d->writeNotifier->isActive())
+    //    d->writeNotifier->start();
 
     return true;
 }
@@ -197,17 +284,24 @@ QString RusokuCanBackend::interpretErrorFrame(const QCanBusFrame &errorFrame)
 {
     Q_UNUSED(errorFrame);
 
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::interpretErrorFrame()");
+
     return QString();
 }
 
 void RusokuCanBackend::resetController()
 {
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::resetController()");
+
     close();
     open();
 }
 
 QCanBusDevice::CanBusStatus RusokuCanBackend::busStatus() const
 {
+
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::busStatus()");
+
 /*
     const TPCANStatus status = ::CAN_GetStatus(d_ptr->channelIndex);
 
@@ -226,6 +320,120 @@ QCanBusDevice::CanBusStatus RusokuCanBackend::busStatus() const
     }
 */
     return QCanBusDevice::CanBusStatus::Good;
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//       RusokuCanBackendPrivate
+//
+
+RusokuCanBackendPrivate::RusokuCanBackendPrivate(RusokuCanBackend *q)
+        : q_ptr(q)
+{
+}
+
+bool RusokuCanBackendPrivate::open() {
+    Q_Q(RusokuCanBackend);
+
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::open()");
+
+    const int nominalBitrate = q->configurationParameter(QCanBusDevice::BitRateKey).toInt();
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- nominal bitrate = %d", nominalBitrate);
+
+    if ((handle = can_init(channelIndex, CANMODE_DEFAULT, NULL)) < CANERR_NOERROR){
+        qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
+        q->setError("Cannot init hardware", QCanBusDevice::ConnectionError);
+        return false;
+    }
+
+    can_bitrate_t bitrate;
+    bitrate.index = CANBTR_INDEX_250K; // default
+
+    if ((can_start(handle, &bitrate)) < CANERR_NOERROR) {
+        qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
+        q->setError("Cannot start hardware", QCanBusDevice::ConnectionError);
+        return false;
+    }
+
+    isOpen = true;
+    return true;
+}
+
+void RusokuCanBackendPrivate::close()
+{
+    Q_Q(RusokuCanBackend);
+
+    can_exit(channelIndex);
+
+    isOpen = false;
+}
+
+bool RusokuCanBackendPrivate::setConfigurationParameter(int key, const QVariant &value)
+{
+    Q_Q(RusokuCanBackend);
+
+    return true;
+}
+
+struct TCanDevice {
+    int32_t adapter;
+    char *name;
+};
+
+static const TCanDevice m_CanDevices[] = {
+        {TOUCAN_USB_CHANNEL0, (char *)"TouCAN-USB1" },
+        {TOUCAN_USB_CHANNEL1, (char *)"TouCAN-USB2" },
+        {TOUCAN_USB_CHANNEL2, (char *)"TouCAN-USB3" },
+        {TOUCAN_USB_CHANNEL3, (char *)"TouCAN-USB4" },
+        {TOUCAN_USB_CHANNEL4, (char *)"TouCAN-USB5" },
+        {TOUCAN_USB_CHANNEL5, (char *)"TouCAN-USB6" },
+        {TOUCAN_USB_CHANNEL6, (char *)"TouCAN-USB7" },
+        {TOUCAN_USB_CHANNEL7, (char *)"TouCAN-USB8" },
+        {EOF, NULL}
+};
+
+void RusokuCanBackendPrivate::setupChannel(const QByteArray &interfaceName)
+{
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::setupChannel()");
+
+    const TCanDevice *channel = m_CanDevices;
+    while (channel->adapter != EOF && channel->name != interfaceName)
+        ++channel;
+    channelIndex = channel->adapter;
+
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- channel index %d", channelIndex);
+}
+
+// Calls only when the device is closed
+void RusokuCanBackendPrivate::setupDefaultConfigurations()
+{
+    Q_Q(RusokuCanBackend);
+
+    q->setConfigurationParameter(QCanBusDevice::BitRateKey, 500000);
+}
+
+QString RusokuCanBackendPrivate::systemErrorString(/*TPCANStatus errorCode*/)
+{
+    Q_Q(RusokuCanBackend);
+
+    return RusokuCanBackend::tr("TODO:");
+}
+
+void RusokuCanBackendPrivate::startWrite()
+{
+    Q_Q(RusokuCanBackend);
+}
+
+void RusokuCanBackendPrivate::startRead()
+{
+    Q_Q(RusokuCanBackend);
+}
+
+bool RusokuCanBackendPrivate::verifyBitRate(int bitrate)
+{
+    Q_Q(RusokuCanBackend);
+
+    return true;
 }
 
 QT_END_NAMESPACE
