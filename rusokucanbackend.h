@@ -3,6 +3,8 @@
 ** Copyright (C) 2017 Denis Shienkov <denis.shienkov@gmail.com>
 ** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2023 Gediminas Simanskis <gediminas@rusoku.com>
+** Copyright (C) 2023 Rusoku technologijos UAB.
 **
 ** This file is part of the QtSerialBus module of the Qt Toolkit.
 **

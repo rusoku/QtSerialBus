@@ -3,6 +3,8 @@
 ** Copyright (C) 2017 Denis Shienkov <denis.shienkov@gmail.com>
 ** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2023 Gediminas Simanskis <gediminas@rusoku.com>
+** Copyright (C) 2023 Rusoku technologijos UAB.
 **
 ** This file is part of the QtSerialBus module of the Qt Toolkit.
 **
@@ -56,12 +58,11 @@
 #include "TouCAN_Defines.h"
 
 #ifdef Q_OS_WIN32
-#   include <windows.h>
-#   define DRV_CALLBACK_TYPE WINAPI
+    #include <windows.h>
+    #define DRV_CALLBACK_TYPE WINAPI
 #else
-#   define DRV_CALLBACK_TYPE
+    #define DRV_CALLBACK_TYPE
 #endif
-
 
 #define GENERATE_SYMBOL_VARIABLE(returnType, symbolName, ...) \
     typedef returnType (DRV_CALLBACK_TYPE *fp_##symbolName)(__VA_ARGS__); \

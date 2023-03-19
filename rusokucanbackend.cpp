@@ -3,6 +3,8 @@
 ** Copyright (C) 2017 Denis Shienkov <denis.shienkov@gmail.com>
 ** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2023 Gediminas Simanskis <gediminas@rusoku.com>
+** Copyright (C) 2023 Rusoku technologijos UAB.
 **
 ** This file is part of the QtSerialBus module of the Qt Toolkit.
 **
@@ -54,7 +56,6 @@
 //   include <QtCore/qsocketnotifier.h>
 #endif
 
-
 QT_BEGIN_NAMESPACE
 
 Q_DECLARE_LOGGING_CATEGORY(QT_CANBUS_PLUGINS_RUSOKUCAN)
@@ -102,12 +103,9 @@ QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
 
     //memset(&info, 0, sizeof(SChannelInfo));
     info.m_nChannelNo = (-1);
-    int state;
+    int state, rc;
     can_mode_t opMode = {};
     opMode.byte = CANMODE_DEFAULT;
-    can_bitrate_t bitrate = {};
-    bitrate.index = CANBTR_INDEX_500K;
-    int rc = 0;
 
         for(int x = 0; x < TOUCAN_BOARDS; x++)
         {
@@ -380,7 +378,7 @@ struct TCanDevice {
     char *name;
 };
 
-static const TCanDevice m_CanDevices[] = {
+static const struct TCanDevice m_CanDevices[] = {
         {TOUCAN_USB_CHANNEL0, (char *)"TouCAN-USB1" },
         {TOUCAN_USB_CHANNEL1, (char *)"TouCAN-USB2" },
         {TOUCAN_USB_CHANNEL2, (char *)"TouCAN-USB3" },
