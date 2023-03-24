@@ -92,14 +92,15 @@ public:
     bool isFlexibleDatarateEnabled = false;
     bool isOpen = false;
     int32_t channelIndex = -1;
-    int handle;
+    int handle = -1;
     QTimer *writeNotifier = nullptr;
 
 #if defined(Q_OS_WIN32)
     //QWinEventNotifier *readNotifier = nullptr;
     //HANDLE readHandle  = INVALID_HANDLE_VALUE;
 #else
-    QSocketNotifier *readNotifier = nullptr;
+    //QSocketNotifier *readNotifier = nullptr;
+    QTimer *readNotifier = nullptr;
     int readHandle = -1;
 #endif
 
