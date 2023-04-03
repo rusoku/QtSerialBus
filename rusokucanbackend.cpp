@@ -37,6 +37,8 @@
 **
 ****************************************************************************/
 
+// NSVersionOfLinkTimeLibrary()
+
 #include "rusokucanbackend.h"
 #include "rusokucanbackend_p.h"
 #include "rusokucan_symbols_p.h"
@@ -108,7 +110,7 @@ QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
     opMode.byte = CANMODE_DEFAULT;
     int m_handle = -1;
 
-        for(int x = 0; x < TOUCAN_BOARDS; x++)
+        for(int x = 0; x < CAN_MAX_HANDLES; x++)
         {
             if(x == 0)
                 rc = ::can_property((-1), CANPROP_SET_FIRST_CHANNEL, NULL, 0U);
@@ -299,15 +301,6 @@ QCanBusDevice::CanBusStatus RusokuCanBackend::busStatus() const
         return QCanBusDevice::CanBusStatus::Unknown;
     }
 
-//#define CANSTAT_RESET             0x80U /**< CAN status: controller stopped */
-//#define CANSTAT_BOFF              0x40U /**< CAN status: busoff status */
-//#define CANSTAT_EWRN              0x20U /**< CAN status: error warning level */
-//#define CANSTAT_BERR              0x10U /**< CAN status: bus error (LEC) */
-//#define CANSTAT_TX_BUSY           0x08U /**< CAN status: transmitter busy */
-//#define CANSTAT_RX_EMPTY          0x04U /**< CAN status: receiver empty */
-//#define CANSTAT_MSG_LST           0x02U /**< CAN status: message lost */
-//#define CANSTAT_QUE_OVR           0x01U /**< CAN status: event-queue overrun */
-
     switch (status & 0xF0) {
         case 0:
             return QCanBusDevice::CanBusStatus::Good;
@@ -398,10 +391,21 @@ bool RusokuCanBackendPrivate::open() {
     }
 
     can_bitrate_t bitrate;
-    bitrate.index = CANBTR_INDEX_250K; // default
+    switch (nominalBitrate) {
+        case 1000000: bitrate.index = (int32_t)CANBTR_INDEX_1M; break;
+        case 800000:  bitrate.index = (int32_t)CANBTR_INDEX_800K; break;
+        case 500000:  bitrate.index = (int32_t)CANBTR_INDEX_500K; break;
+        case 250000:  bitrate.index = (int32_t)CANBTR_INDEX_250K; break;
+        case 125000:  bitrate.index = (int32_t)CANBTR_INDEX_125K; break;
+        case 100000:  bitrate.index = (int32_t)CANBTR_INDEX_100K; break;
+        case 50000:   bitrate.index = (int32_t)CANBTR_INDEX_50K; break;
+        case 20000:   bitrate.index = (int32_t)CANBTR_INDEX_20K; break;
+        case 10000:   bitrate.index = (int32_t)CANBTR_INDEX_10K; break;
+        default:      bitrate.index = (int32_t)CANBTR_INDEX_500K; break;
+    }
 
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
-    if ((can_start(handle, &bitrate)) < CANERR_NOERROR) {
+    if ((::can_start(handle, &bitrate)) < CANERR_NOERROR) {
         qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
         q->setError("Cannot start hardware", QCanBusDevice::ConnectionError);
         return false;
@@ -453,15 +457,15 @@ struct TCanDevice {
     char *name;
 };
 
-static const struct TCanDevice m_CanDevices[] = {
-        {TOUCAN_USB_CHANNEL0, (char *)"TouCAN-USB1" },
-        {TOUCAN_USB_CHANNEL1, (char *)"TouCAN-USB2" },
-        {TOUCAN_USB_CHANNEL2, (char *)"TouCAN-USB3" },
-        {TOUCAN_USB_CHANNEL3, (char *)"TouCAN-USB4" },
-        {TOUCAN_USB_CHANNEL4, (char *)"TouCAN-USB5" },
-        {TOUCAN_USB_CHANNEL5, (char *)"TouCAN-USB6" },
-        {TOUCAN_USB_CHANNEL6, (char *)"TouCAN-USB7" },
-        {TOUCAN_USB_CHANNEL7, (char *)"TouCAN-USB8" },
+static const can_board_t can_boards[CAN_MAX_HANDLES+1] = {  // list of supported CAN Interfaces
+        {TOUCAN_USB_CHANNEL0, (char *)"TouCAN-USB1"},
+        {TOUCAN_USB_CHANNEL1, (char *)"TouCAN-USB2"},
+        {TOUCAN_USB_CHANNEL2, (char *)"TouCAN-USB3"},
+        {TOUCAN_USB_CHANNEL3, (char *)"TouCAN-USB4"},
+        {TOUCAN_USB_CHANNEL4, (char *)"TouCAN-USB5"},
+        {TOUCAN_USB_CHANNEL5, (char *)"TouCAN-USB6"},
+        {TOUCAN_USB_CHANNEL6, (char *)"TouCAN-USB7"},
+        {TOUCAN_USB_CHANNEL7, (char *)"TouCAN-USB8"},
         {EOF, NULL}
 };
 
@@ -469,10 +473,10 @@ void RusokuCanBackendPrivate::setupChannel(const QByteArray &interfaceName)
 {
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::setupChannel()");
 
-    const TCanDevice *channel = m_CanDevices;
-    while (channel->adapter != EOF && channel->name != interfaceName)
+    const can_board_t *channel = can_boards;
+    while (channel->type != EOF && channel->name != interfaceName)
         ++channel;
-    channelIndex = channel->adapter;
+    channelIndex = channel->type;
 
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- channel index %d", channelIndex);
 }
@@ -487,7 +491,7 @@ void RusokuCanBackendPrivate::setupDefaultConfigurations()
     q->setConfigurationParameter(QCanBusDevice::BitRateKey, 500000);
 }
 
-QString RusokuCanBackendPrivate::systemErrorString(/*TPCANStatus errorCode*/)
+QString RusokuCanBackendPrivate::systemErrorString(int errorCode)
 {
     Q_Q(RusokuCanBackend);
 
@@ -524,7 +528,7 @@ void RusokuCanBackendPrivate::startWrite()
     int st = CANERR_ONLINE;
     st = ::can_write(handle, &message, 0);
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- can_write");
-    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
 
     if (Q_UNLIKELY(st != CANERR_NOERROR)) {
         qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot write frame errcode = %d", st);
@@ -542,15 +546,35 @@ void RusokuCanBackendPrivate::startRead()
 
     //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::startRead()");
 
+    QVector<QCanBusFrame> newFrames;
     int st = CANERR_ONLINE;
     can_message_t message = {};
-    st = ::can_read(handle, &message, 0);
 
-    st++;
+    for(;;) {
+        st = ::can_read(handle, &message, 0);
 
-    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
-    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
-    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "startRead errcode = %d", st);
+        if (st != CANERR_NOERROR) {
+            //q->setError(systemErrorString(st), QCanBusDevice::ReadError);
+            //qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot read frame, err_code = %d", st);
+            //return;
+            break;
+        }
+
+        if(message.esi)
+            break;
+
+        const int size = message.dlc;
+        QCanBusFrame frame(message.id,
+                           QByteArray(reinterpret_cast<const char *>(message.data), size));
+        frame.setExtendedFrameFormat(message.xtd);
+        frame.setFrameType((message.rtr)
+                           ? QCanBusFrame::RemoteRequestFrame : QCanBusFrame::DataFrame);
+
+        frame.setTimeStamp(QCanBusFrame::TimeStamp::fromMicroSeconds(static_cast<qint64>(message.timestamp.tv_nsec)));
+        newFrames.append(std::move(frame));
+    }
+    q->enqueueReceivedFrames(newFrames);
+    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RX frame list received()");
 }
 
 bool RusokuCanBackendPrivate::verifyBitRate(int bitrate)

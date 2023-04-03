@@ -7,9 +7,6 @@ project(rusokucan
         HOMEPAGE_URL "https://www.rusoku.com"
         LANGUAGES CXX C)
 
-set(QT_USE_FIXED_QT_ADD_RESOURCE_BASE TRUE)
-#set(CMAKE_MAKE_PROGRAM "ninja")
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -26,6 +23,9 @@ set(CMAKE_OSX_ARCHITECTURES x86_64)
 
 set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64")
 
+set(CMAKE_MACOSX_RPATH 1)
+set(CMAKE_BUILD_RPATH "@executable_path/../Frameworks")
+
 find_package(Qt5 COMPONENTS
         Core
         SerialBus
@@ -34,10 +34,8 @@ find_package(Qt5 COMPONENTS
 set(SOURCE_FILES
         main.cpp
         rusokucanbackend.cpp)
-        #rusokucanbackend_p.cpp
 
 set(HEADERS_FILES
-        #can_api.h
         CANAPI_Types.h
         rusokucanbackend.h
         rusokucanbackend_p.h
@@ -57,6 +55,8 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 else()
     add_compile_definitions(rusokucan QT_NO_DEBUG)
     add_compile_definitions(rusokucan QT_NO_DEBUG_OUTPUT)
+    add_compile_definitions(rusokucan QT_NO_INFO_OUTPUT)
+    add_compile_definitions(rusokucan QT_NO_WARNING_OUTPUT)
 endif()
 
 set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)

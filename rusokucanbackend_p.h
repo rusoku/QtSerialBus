@@ -82,7 +82,7 @@ public:
     bool setConfigurationParameter(int key, const QVariant &value);
     void setupChannel(const QByteArray &interfaceName);
     void setupDefaultConfigurations();
-    QString systemErrorString(/*TPCANStatus errorCode*/);
+    QString systemErrorString(int errorCode);
     void startWrite();
     void startRead();
     bool verifyBitRate(int bitrate);

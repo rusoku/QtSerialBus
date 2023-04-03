@@ -64,6 +64,29 @@
     #define DRV_CALLBACK_TYPE
 #endif
 
+/*  -----------  defines  ------------------------------------------------
+ */
+#ifndef CAN_MAX_HANDLES
+#define CAN_MAX_HANDLES         (8)     // maximum number of open handles
+#endif
+#ifndef DLC2LEN
+#define DLC2LEN(x)              dlc_table[(x) & 0xF]
+#endif
+#ifndef LEN2DLC
+#define LEN2DLC(x)              ((x) > 48) ? 0xF : \
+                                ((x) > 32) ? 0xE : \
+                                ((x) > 24) ? 0xD : \
+                                ((x) > 20) ? 0xC : \
+                                ((x) > 16) ? 0xB : \
+                                ((x) > 12) ? 0xA : \
+                                ((x) > 8) ?  0x9 : (x)
+#endif
+
+typedef struct can_board_t_ {
+    int32_t type;                       /**< board type */
+    char   *name;                       /**< board name */
+} can_board_t;
+
 #define GENERATE_SYMBOL_VARIABLE(returnType, symbolName, ...) \
     typedef returnType (DRV_CALLBACK_TYPE *fp_##symbolName)(__VA_ARGS__); \
     static fp_##symbolName symbolName;
