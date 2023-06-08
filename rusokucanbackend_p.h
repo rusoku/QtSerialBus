@@ -95,14 +95,14 @@ public:
     int handle = -1;
     QTimer *writeNotifier = nullptr;
 
-#if defined(Q_OS_WIN32)
+//#if defined(Q_OS_WIN32)
     //QWinEventNotifier *readNotifier = nullptr;
     //HANDLE readHandle  = INVALID_HANDLE_VALUE;
-#else
+//#else
     //QSocketNotifier *readNotifier = nullptr;
     QTimer *readNotifier = nullptr;
     int readHandle = -1;
-#endif
+//#endif
 
 };
 

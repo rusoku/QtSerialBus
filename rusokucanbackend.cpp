@@ -52,11 +52,11 @@
 #include <algorithm>
 
 
-#ifdef Q_OS_WIN32
+//#ifdef Q_OS_WIN32
 //   include <QtCore/qwineventnotifier.h>
-#else
+//#else
 //   include <QtCore/qsocketnotifier.h>
-#endif
+//#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -101,6 +101,10 @@ QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::interfaces()");
 
     QList<QCanBusDeviceInfo> result;
+
+
+
+
     SChannelInfo info = {};
 
     //memset(&info, 0, sizeof(SChannelInfo));

@@ -66,6 +66,7 @@
 
 /*  -----------  defines  ------------------------------------------------
  */
+/*
 #ifndef CAN_MAX_HANDLES
 #define CAN_MAX_HANDLES         (8)     // maximum number of open handles
 #endif
@@ -81,11 +82,54 @@
                                 ((x) > 12) ? 0xA : \
                                 ((x) > 8) ?  0x9 : (x)
 #endif
+*/
 
-typedef struct can_board_t_ {
-    int32_t type;                       /**< board type */
-    char   *name;                       /**< board name */
-} can_board_t;
+typedef struct structCanalMsg {
+    unsigned long flags;			    // CAN message flags
+    unsigned long obid;			    	// Used by driver for channel info etc.
+    unsigned long id;			      	// CAN id (11-bit or 29-bit)
+    unsigned char sizeData;		  	    // Data size 0-8
+    unsigned char data[8];		        // CAN Data
+    unsigned long timestamp;		    // Relative time stamp for package in microseconds
+} canalMsg;
+
+typedef struct structCanalStatistics {
+    unsigned long cntReceiveFrames;				// # of receive frames
+    unsigned long cntTransmitFrames;			// # of transmitted frames
+    unsigned long cntReceiveData;			  	// # of received data bytes
+    unsigned long cntTransmitData;			    // # of transmitted data bytes
+    unsigned long cntOverruns;				    // # of overruns
+    unsigned long cntBusWarnings;			  	// # of bys warnings
+    unsigned long cntBusOff;					// # of bus off's
+} canalStatistics;
+
+typedef struct structCanalStatus {
+    unsigned long channel_status;	  	// Current state for channel
+    unsigned long lasterrorcode;		// Last error code
+    unsigned long lasterrorsubcode;		// Last error subcode
+    char lasterrorstr[80];	    		// Last error string
+} canalStatus;
+
+typedef enum {
+    FILTER_ACCEPT_ALL   = 0,
+    FILTER_REJECT_ALL,
+    FILTER_VALUE,
+}Filter_Type_TypeDef;
+
+#define CANAL_DEVLIST_SIZE_MAX 64
+
+typedef struct struct_CANAL_DEV_INFO {
+    unsigned int    DeviceId;
+    unsigned int    vid;
+    unsigned int    pid;
+    char            SerialNumber[10];
+} canal_dev_info, *pcanal_dev_info;
+
+
+typedef struct struct_CANAL_DEV_LIST{
+    canal_dev_info canDevInfo[CANAL_DEVLIST_SIZE_MAX];
+    unsigned int   canDevCount;
+} canal_dev_list, *pcanal_dev_list;
 
 #define GENERATE_SYMBOL_VARIABLE(returnType, symbolName, ...) \
     typedef returnType (DRV_CALLBACK_TYPE *fp_##symbolName)(__VA_ARGS__); \
@@ -96,21 +140,35 @@ typedef struct can_board_t_ {
     if (!symbolName) \
         return false;
 
-GENERATE_SYMBOL_VARIABLE(int, can_test, int32_t, uint8_t, const void *, int *)
-GENERATE_SYMBOL_VARIABLE(int, can_init, int32_t, uint8_t, const void *)
-GENERATE_SYMBOL_VARIABLE(int, can_exit, int)
-GENERATE_SYMBOL_VARIABLE(int, can_kill, int)
-GENERATE_SYMBOL_VARIABLE(int, can_start,int, const can_bitrate_t *)
-GENERATE_SYMBOL_VARIABLE(int, can_reset, int)
-GENERATE_SYMBOL_VARIABLE(int, can_write, int, const can_message_t *, uint16_t)
-GENERATE_SYMBOL_VARIABLE(int, can_read, int, const can_message_t *, uint16_t)
-GENERATE_SYMBOL_VARIABLE(int, can_status, int, uint8_t *)
-GENERATE_SYMBOL_VARIABLE(int, can_busload, int, uint8_t *, uint8_t *)
-GENERATE_SYMBOL_VARIABLE(int, can_bitrate, int, can_bitrate_t *, can_speed_t *)
-GENERATE_SYMBOL_VARIABLE(int, can_property, int, uint16_t, void *, uint32_t)
-GENERATE_SYMBOL_VARIABLE(char *, can_hardware, int)
-GENERATE_SYMBOL_VARIABLE(char *, can_firmware, int)
-GENERATE_SYMBOL_VARIABLE(char *, can_version, int)
+GENERATE_SYMBOL_VARIABLE(long, CanalOpen, const char*, unsigned long)
+GENERATE_SYMBOL_VARIABLE(long, CanalClose, long)
+GENERATE_SYMBOL_VARIABLE(long, CanalGetLevel, long)
+GENERATE_SYMBOL_VARIABLE(int, CanalSend, canalMsg*)
+GENERATE_SYMBOL_VARIABLE(int, CanalBlockingSend, long, canalMsg*, unsigned long)
+GENERATE_SYMBOL_VARIABLE(int, CanalReceive, canalMsg*)
+GENERATE_SYMBOL_VARIABLE(int, CanalBlockingReceive, long, canalMsg*, unsigned long)
+GENERATE_SYMBOL_VARIABLE(int, CanalDataAvailable, long)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetStatus, long, canalStatus*)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetStatistics, long, canalStatistics*)
+GENERATE_SYMBOL_VARIABLE(int, CanalSetFilter, long , unsigned long)
+GENERATE_SYMBOL_VARIABLE(int, CanalSetMask, long , unsigned long)
+GENERATE_SYMBOL_VARIABLE(int, CanalSetBaudrate, long, unsigned long)
+GENERATE_SYMBOL_VARIABLE(unsigned long, CanalGetVersion, void)
+GENERATE_SYMBOL_VARIABLE(unsigned long, CanalGetDllVersion, void)
+GENERATE_SYMBOL_VARIABLE(const char *, CanalGetVendorString, void)
+GENERATE_SYMBOL_VARIABLE(const char *, CanalGetDriverInfo, void)
+GENERATE_SYMBOL_VARIABLE(int, CanalSetFilter11bit, long, Filter_Type_TypeDef,  unsigned long, unsigned long)
+GENERATE_SYMBOL_VARIABLE(int, CanalSetFilter29bit, long, Filter_Type_TypeDef,  unsigned long, unsigned long)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetBootloaderVersion, long, unsigned long*)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetHardwareVersion, long, unsigned long*)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetFirmwareVersion, long, unsigned long*)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetSerialNumber,long, unsigned long*)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetVidPid, long, unsigned long*)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetDeviceId, long, unsigned long*)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetVendor, long, unsigned int, char*)
+GENERATE_SYMBOL_VARIABLE(int, CanalInterfaceStart, long)
+GENERATE_SYMBOL_VARIABLE(int, CanalInterfaceStop, long)
+GENERATE_SYMBOL_VARIABLE(int, CanalGetDeviceList, canal_dev_list*, int)
 
 inline bool resolveRusokuCanSymbols(QLibrary *rusokuLibrary)
 {
@@ -118,27 +176,41 @@ inline bool resolveRusokuCanSymbols(QLibrary *rusokuLibrary)
         #ifdef Q_OS_MACOS
             rusokuLibrary->setFileName(QStringLiteral("libUVCANTOU"));
         #else
-            pcanLibrary->setFileName(QStringLiteral("uvcantou"));
+            rusokuLibrary->setFileName(QStringLiteral("canal.dll"));
         #endif
         if (!rusokuLibrary->load())
             return false;
     }
 
-    RESOLVE_SYMBOL(can_test)
-    RESOLVE_SYMBOL(can_init)
-    RESOLVE_SYMBOL(can_exit)
-    RESOLVE_SYMBOL(can_kill)
-    RESOLVE_SYMBOL(can_start)
-    RESOLVE_SYMBOL(can_reset)
-    RESOLVE_SYMBOL(can_write)
-    RESOLVE_SYMBOL(can_read)
-    RESOLVE_SYMBOL(can_status)
-    RESOLVE_SYMBOL(can_busload)
-    RESOLVE_SYMBOL(can_bitrate)
-    RESOLVE_SYMBOL(can_property)
-    RESOLVE_SYMBOL(can_hardware)
-    RESOLVE_SYMBOL(can_firmware)
-    RESOLVE_SYMBOL(can_version)
+    RESOLVE_SYMBOL(CanalOpen)
+    RESOLVE_SYMBOL(CanalClose)
+    RESOLVE_SYMBOL(CanalGetLevel)
+    RESOLVE_SYMBOL(CanalSend)
+    RESOLVE_SYMBOL(CanalBlockingSend)
+    RESOLVE_SYMBOL(CanalReceive)
+    RESOLVE_SYMBOL(CanalBlockingReceive)
+    RESOLVE_SYMBOL(CanalDataAvailable)
+    RESOLVE_SYMBOL(CanalGetStatus)
+    RESOLVE_SYMBOL(CanalGetStatistics)
+    RESOLVE_SYMBOL(CanalSetFilter)
+    RESOLVE_SYMBOL(CanalSetMask)
+    RESOLVE_SYMBOL(CanalSetBaudrate)
+    RESOLVE_SYMBOL(CanalGetVersion)
+    RESOLVE_SYMBOL(CanalGetDllVersion)
+    RESOLVE_SYMBOL(CanalGetVendorString)
+    RESOLVE_SYMBOL(CanalGetDriverInfo)
+    RESOLVE_SYMBOL(CanalSetFilter11bit)
+    RESOLVE_SYMBOL(CanalSetFilter29bit)
+    RESOLVE_SYMBOL(CanalGetBootloaderVersion)
+    RESOLVE_SYMBOL(CanalGetHardwareVersion)
+    RESOLVE_SYMBOL(CanalGetFirmwareVersion)
+    RESOLVE_SYMBOL(CanalGetSerialNumber)
+    RESOLVE_SYMBOL(CanalGetVidPid)
+    RESOLVE_SYMBOL(CanalGetDeviceId)
+    RESOLVE_SYMBOL(CanalGetVendor)
+    RESOLVE_SYMBOL(CanalInterfaceStart)
+    RESOLVE_SYMBOL(CanalInterfaceStop)
+    RESOLVE_SYMBOL(CanalGetDeviceList)
 
     return true;
 }

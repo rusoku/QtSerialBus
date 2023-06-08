@@ -18,13 +18,11 @@ endif()
 
 set(CMAKE_OSX_ARCHITECTURES x86_64)
 
-#set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64"
-#                        "C:/Qt/5.15.2/msvc2019_64")
+set(CMAKE_PREFIX_PATH "C:/Qt/5.15.2/msvc2019_64")
 
-set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64")
-
-set(CMAKE_MACOSX_RPATH 1)
-set(CMAKE_BUILD_RPATH "@executable_path/../Frameworks")
+#set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64")
+#set(CMAKE_MACOSX_RPATH 1)
+#set(CMAKE_BUILD_RPATH "@executable_path/../Frameworks")
 
 find_package(Qt5 COMPONENTS
         Core
@@ -59,9 +57,9 @@ else()
     add_compile_definitions(rusokucan QT_NO_WARNING_OUTPUT)
 endif()
 
-set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
-set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
+#set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
+#set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
 #set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
 
-add_custom_command(TARGET rusokucan POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}/plugins/canbus)
+#add_custom_command(TARGET rusokucan POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}/plugins/canbus)
