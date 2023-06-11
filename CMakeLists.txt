@@ -37,7 +37,7 @@ set(HEADERS_FILES
         CANAPI_Types.h
         rusokucanbackend.h
         rusokucanbackend_p.h
-        TouCAN_Defines.h)
+        )
 
 set(OTHER_FILES
         plugin.json)

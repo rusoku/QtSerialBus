@@ -86,16 +86,6 @@ bool RusokuCanBackend::canCreate(QString *errorReason)
 #endif
 }
 
-/// \brief  CAN channel information
-struct SChannelInfo {
-    int32_t m_nChannelNo;  ///< channel no. at actual index in the interface list
-    char m_szDeviceName[CANPROP_MAX_BUFFER_SIZE];  ///< device name at actual index in the interface list
-    char m_szDeviceDllName[CANPROP_MAX_BUFFER_SIZE];  ///< file name of the DLL at actual index in the interface list
-    int32_t m_nLibraryId;  ///< library id at actual index in the interface list
-    char m_szVendorName[CANPROP_MAX_BUFFER_SIZE];  ///< vendor name at actual index in the interface list
-    uint32_t m_nSerialNumber;
-};
-
 QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
 {
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::interfaces()");
@@ -272,6 +262,7 @@ QCanBusDevice::CanBusStatus RusokuCanBackend::busStatus() const
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "handle: %d", d_ptr->handle);
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CAN_STATUS: %d", status);
 
+    /*
     if(rc != CANERR_NOERROR) {
         qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Unknown CAN bus status: %lu.", ulong(status));
         return QCanBusDevice::CanBusStatus::Unknown;
@@ -290,6 +281,7 @@ QCanBusDevice::CanBusStatus RusokuCanBackend::busStatus() const
             qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Unknown CAN bus status: %lu.", ulong(status));
             return QCanBusDevice::CanBusStatus::Unknown;
     }
+     */
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -376,27 +368,12 @@ bool RusokuCanBackendPrivate::open() {
     if(handle <= 0)
         return false;
 
-/*
-    if ((handle = ::can_init(channelIndex, CANMODE_DEFAULT, NULL)) < CANERR_NOERROR){
-        qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
-        q->setError("Cannot init hardware", QCanBusDevice::ConnectionError);
-        return false;
-    }
-*/
-/*
-    if ((::can_start(handle, &bitrate)) < CANERR_NOERROR) {
-        qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
-        q->setError("Cannot start hardware", QCanBusDevice::ConnectionError);
-        return false;
-    }
-*/
-
     writeNotifier = new RusokuCanWriteNotifier(this, q);
-    writeNotifier->setInterval(1);
+    writeNotifier->setInterval(0);
 
     readNotifier = new RusokuCanReadNotifier(this, q);
-    readNotifier->setInterval(1);
-//    readNotifier->start();
+    readNotifier->setInterval(0);
+    readNotifier->start(0);
 
     isOpen = true;
     return true;
@@ -439,11 +416,6 @@ void RusokuCanBackendPrivate::setupChannel(const QString &interfaceName)
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::setupChannel()");
     m_DeviceName = interfaceName;
 
-//    const can_board_t *channel = can_boards;
-//    while (channel->type != EOF && channel->name != interfaceName)
-//        ++channel;
-//    channelIndex = channel->type;
-
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- channel index %d", channelIndex);
 }
 
@@ -467,8 +439,9 @@ QString RusokuCanBackendPrivate::systemErrorString(int errorCode)
 void RusokuCanBackendPrivate::startWrite()
 {
     Q_Q(RusokuCanBackend);
-
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::startWrite()");
+
+    quint16 st = CANAL_ERROR_GENERIC;
 
     if (!q->hasOutgoingFrames()) {
         writeNotifier->stop();
@@ -478,29 +451,33 @@ void RusokuCanBackendPrivate::startWrite()
 
     const QCanBusFrame frame = q->dequeueOutgoingFrame();
     const QByteArray payload = frame.payload();
+    canalMsg CanalMsg = {};
 
-    can_message_t message = {};
-    message.id = frame.frameId();
-    message.dlc = static_cast<quint8>(payload.size());
-    message.xtd = frame.hasExtendedFrameFormat();
-    message.timestamp.tv_sec = 0;
+    CanalMsg.id = frame.frameId();
+    CanalMsg.sizeData = static_cast<quint8>(payload.size());
 
-    if (frame.frameType() == QCanBusFrame::RemoteRequestFrame){
-        message.rtr = true;
-    }else{
-        ::memcpy(message.data, payload.constData(), sizeof(message.data));
+    if(frame.hasExtendedFrameFormat()){
+        CanalMsg.flags |=  CANAL_IDFLAG_EXTENDED;
     }
 
-    int st = CANERR_ONLINE;
-//    st = ::can_write(handle, &message, 0);
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- can_write");
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
+    if (frame.frameType() == QCanBusFrame::RemoteRequestFrame){
+        CanalMsg.flags |=  CANAL_IDFLAG_RTR;
+    }else{
+        ::memcpy(CanalMsg.data, payload.constData(), sizeof(CanalMsg.data)/sizeof(CanalMsg.data[0]));
+    }
 
-    if (Q_UNLIKELY(st != CANERR_NOERROR)) {
+    CanalMsg.timestamp = 0;
+
+    st = CanalSend(handle, &CanalMsg);
+
+    if (Q_UNLIKELY(st != CANAL_ERROR_SUCCESS)) {
         qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot write frame errcode = %d", st);
     }else{
         emit q->framesWritten(qint64(1));
     }
+
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- can_write");
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
 
     if (q->hasOutgoingFrames() && !writeNotifier->isActive())
         writeNotifier->start();
@@ -509,48 +486,49 @@ void RusokuCanBackendPrivate::startWrite()
 void RusokuCanBackendPrivate::startRead()
 {
     Q_Q(RusokuCanBackend);
+    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::startRead()");
 
-    return;
+    QVector<QCanBusFrame>   newFrames;
+    canalMsg    CanalMsg = {};
+    quint16     st = CANAL_ERROR_GENERIC;
+    quint16     DataAvailableCount = 0;
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //st = CanalBlockingReceive(handle, &CanalMsg, 100);
+    DataAvailableCount = CanalDataAvailable(handle);
 
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::startRead()");
+    if(DataAvailableCount <= 0)
+        return;
 
-    //DllExport   int WINAPI  CanalBlockingReceive(long handle, PCANALMSG pCanalMsg, unsigned long timeout);
+    for(quint16 x = 0; x < DataAvailableCount; x++ ) {
 
-    QVector<QCanBusFrame> newFrames;
-    int st = CANERR_ONLINE;
-    can_message_t message = {};
+        st = CanalReceive(handle, &CanalMsg);
 
-    /*
-    for(;;) {
-        st = ::can_read(handle, &message, 0);
-
-        if (st != CANERR_NOERROR) {
+        if (st != CANAL_ERROR_SUCCESS) {
             //q->setError(systemErrorString(st), QCanBusDevice::ReadError);
             //qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot read frame, err_code = %d", st);
-            //return;
-            break;
+            return;
         }
 
-        if(message.esi)
-            break;
+        const quint8 size = CanalMsg.sizeData;
 
-        const int size = message.dlc;
-        QCanBusFrame frame(message.id,
-                           QByteArray(reinterpret_cast<const char *>(message.data), size));
-        frame.setExtendedFrameFormat(message.xtd);
-        frame.setFrameType((message.rtr)
-                           ? QCanBusFrame::RemoteRequestFrame : QCanBusFrame::DataFrame);
+        QCanBusFrame frame(CanalMsg.id,
+            QByteArray(reinterpret_cast<const char *>(CanalMsg.data), size));
 
-        frame.setTimeStamp(QCanBusFrame::TimeStamp::fromMicroSeconds(static_cast<qint64>(message.timestamp.tv_nsec)));
+        if (CanalMsg.flags & CANAL_IDFLAG_EXTENDED) {
+            frame.setExtendedFrameFormat(true);
+        }
+
+        if (CanalMsg.flags & CANAL_IDFLAG_RTR) {
+            frame.setFrameType(QCanBusFrame::RemoteRequestFrame);
+        }
+
+        frame.setTimeStamp(QCanBusFrame::TimeStamp::fromMicroSeconds(static_cast<qint64>(CanalMsg.timestamp)));
+
         newFrames.append(std::move(frame));
+        q->enqueueReceivedFrames(newFrames);
+
+        //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RX frame list received()");
     }
-    */
-
-
-    q->enqueueReceivedFrames(newFrames);
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RX frame list received()");
 }
 
 bool RusokuCanBackendPrivate::verifyBitRate(int bitrate)

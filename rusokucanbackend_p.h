@@ -104,7 +104,7 @@ public:
 //#else
     //QSocketNotifier *readNotifier = nullptr;
     QTimer *readNotifier = nullptr;
-    int readHandle = -1;
+    //int readHandle = -1;
 //#endif
 
 };
