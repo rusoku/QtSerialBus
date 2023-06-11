@@ -250,15 +250,6 @@ void RusokuCanBackend::resetController()
 QCanBusDevice::CanBusStatus RusokuCanBackend::busStatus() const
 {
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::busStatus()");
-/*
-typedef struct structCanalStatus {
-    unsigned long channel_status;	  	// Current state for channel
-    unsigned long lasterrorcode;		// Last error code
-    unsigned long lasterrorsubcode;		// Last error subcode
-    char lasterrorstr[80];	    		// Last error string
-} canalStatus;
-*/
-    //return QCanBusDevice::CanBusStatus::Good;
 
     quint8 rc = CANAL_ERROR_GENERIC;
     canalStatus canStatus = {};
@@ -277,6 +268,8 @@ typedef struct structCanalStatus {
     switch (canStatus.channel_status & 0xF0) {
         case CANAL_STATUSMSG_OK:
             return QCanBusDevice::CanBusStatus::Good;
+        case CANAL_STATUSMSG_OVERRUN:
+            return QCanBusDevice::CanBusStatus::Warning;
         case CANAL_STATUSMSG_BUSLIGHT:
             return QCanBusDevice::CanBusStatus::Warning;
         case CANAL_STATUSMSG_BUSHEAVY:
@@ -400,7 +393,6 @@ void RusokuCanBackendPrivate::close()
     delete readNotifier;
     readNotifier = nullptr;
 
-    //::can_exit(handle);
     CanalClose(handle);
 
     isOpen = false;
@@ -498,7 +490,6 @@ void RusokuCanBackendPrivate::startRead()
     quint16     st = CANAL_ERROR_GENERIC;
     quint16     DataAvailableCount = 0;
 
-    //st = CanalBlockingReceive(handle, &CanalMsg, 100);
     DataAvailableCount = CanalDataAvailable(handle);
 
     if(DataAvailableCount <= 0)
