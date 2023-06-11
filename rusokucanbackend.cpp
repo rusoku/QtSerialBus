@@ -249,39 +249,44 @@ void RusokuCanBackend::resetController()
 
 QCanBusDevice::CanBusStatus RusokuCanBackend::busStatus() const
 {
-  //  qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::busStatus()");
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::busStatus()");
+/*
+typedef struct structCanalStatus {
+    unsigned long channel_status;	  	// Current state for channel
+    unsigned long lasterrorcode;		// Last error code
+    unsigned long lasterrorsubcode;		// Last error subcode
+    char lasterrorstr[80];	    		// Last error string
+} canalStatus;
+*/
+    //return QCanBusDevice::CanBusStatus::Good;
 
-    return QCanBusDevice::CanBusStatus::Good;
+    quint8 rc = CANAL_ERROR_GENERIC;
+    canalStatus canStatus = {};
 
-    ////////////////////////////////////////////////////////////////////////////////
-
-    uint8_t status;
-    int rc;
     //rc = ::can_status(d_ptr->handle, &status);
+    rc = CanalGetStatus(d_ptr->handle, &canStatus);
 
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "handle: %d", d_ptr->handle);
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CAN_STATUS: %d", status);
-
-    /*
-    if(rc != CANERR_NOERROR) {
-        qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Unknown CAN bus status: %lu.", ulong(status));
+    if(rc != CANAL_ERROR_SUCCESS) {
+        qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Unknown CAN bus status: %lu.", ulong(canStatus.channel_status));
         return QCanBusDevice::CanBusStatus::Unknown;
     }
 
-    switch (status & 0xF0) {
-        case 0:
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "handle: %d", d_ptr->handle);
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CAN_STATUS: %lu", canStatus.channel_status);
+
+    switch (canStatus.channel_status & 0xF0) {
+        case CANAL_STATUSMSG_OK:
             return QCanBusDevice::CanBusStatus::Good;
-        case CANSTAT_EWRN:
+        case CANAL_STATUSMSG_BUSLIGHT:
             return QCanBusDevice::CanBusStatus::Warning;
-        case CANSTAT_BERR:
-            return QCanBusDevice::CanBusStatus::Error;
-        case CANSTAT_BOFF:
+        case CANAL_STATUSMSG_BUSHEAVY:
+            return QCanBusDevice::CanBusStatus::Warning;
+        case CANAL_STATUSMSG_BUSOFF:
             return QCanBusDevice::CanBusStatus::BusOff;
         default:
-            qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Unknown CAN bus status: %lu.", ulong(status));
+            qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Unknown CAN bus status: %lu.", ulong(canStatus.channel_status));
             return QCanBusDevice::CanBusStatus::Unknown;
     }
-     */
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
