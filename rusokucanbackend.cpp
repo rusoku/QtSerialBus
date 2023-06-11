@@ -72,13 +72,13 @@ bool RusokuCanBackend::canCreate(QString *errorReason)
     return true;
 #else
 
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::canCreate()");
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::canCreate() - load dll library");
 
     static bool symbolsResolved = resolveRusokuCanSymbols(rusokucanLibrary());
     if (Q_UNLIKELY(!symbolsResolved)) {
         qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot load library: %ls",
                    qUtf16Printable(rusokucanLibrary()->errorString()));
-        *errorReason = "Cannot load libUVCANTOU dynamic library";
+        *errorReason = "Cannot load CANAL dynamic library";
 
         return false;
     }
@@ -101,55 +101,22 @@ QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::interfaces()");
 
     QList<QCanBusDeviceInfo> result;
+    canal_dev_list  can_device_list = {};
+    quint16 canal_total_devices;
 
+    CanalGetDeviceList(&can_device_list, 8);
+    canal_total_devices = can_device_list.canDevCount;
 
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "Found total devices - %lu", canal_total_devices);
 
+    for(quint16 x = 0; x < canal_total_devices; x++){
 
-    SChannelInfo info = {};
+        result.append(std::move(createDeviceInfo(QLatin1String(can_device_list.canDevInfo[x].SerialNumber),
+                                                 QLatin1String("TouCAN adapter"),
+                                                 QLatin1String("RUSOKU"), x,
+                                                 false, false)));
+    }
 
-    //memset(&info, 0, sizeof(SChannelInfo));
-    info.m_nChannelNo = (-1);
-    int state, rc;
-    can_mode_t opMode = {};
-    opMode.byte = CANMODE_DEFAULT;
-    int m_handle = -1;
-
-        for(int x = 0; x < CAN_MAX_HANDLES; x++)
-        {
-            if(x == 0)
-                rc = ::can_property((-1), CANPROP_SET_FIRST_CHANNEL, NULL, 0U);
-            else
-                rc = ::can_property((-1), CANPROP_SET_NEXT_CHANNEL, NULL, 0U);
-
-            if (CANERR_NOERROR == rc) {
-                ::can_property((-1), CANPROP_GET_CHANNEL_NO, (void *) &info.m_nChannelNo,
-                                                                                sizeof(int32_t));
-                ::can_property((-1), CANPROP_GET_CHANNEL_NAME, (void *) &info.m_szDeviceName,
-                                                                                CANPROP_MAX_BUFFER_SIZE);
-                ::can_property((-1), CANPROP_GET_CHANNEL_VENDOR_NAME, (void *) &info.m_szVendorName,
-                                                                                CANPROP_MAX_BUFFER_SIZE);
-                rc = ::can_test(info.m_nChannelNo, opMode.byte, NULL, &state);
-                //m_serial = can_hardware(info.m_nChannelNo);
-
-                if ((0 <= rc) && (state == CANBRD_PRESENT))
-                {
-                    m_handle = ::can_init(info.m_nChannelNo, 0, NULL);
-                    ::can_property(m_handle, TOUCAN_GET_SERIAL_NUMBER, &info.m_nSerialNumber, sizeof(int32_t));
-                    char string[CANPROP_MAX_BUFFER_SIZE] = "(unknown)";
-                    snprintf(string, 10, "%08X",info.m_nSerialNumber);
-                    ::can_exit(m_handle);
-
-                    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "TOUCAN_GET_SERIAL_NUMBER: %s", string);
-                    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_NO: %d", info.m_nChannelNo);
-                    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_NAME: %s", info.m_szDeviceName);
-                    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_VENDOR_NAME: %s", info.m_szVendorName);
-
-                    result.append(std::move(createDeviceInfo(QLatin1String(info.m_szDeviceName), QLatin1String(string),
-                                                          QLatin1String(info.m_szVendorName), info.m_nChannelNo,
-                                                          false, false)));
-                }
-            }
-        }
     return result;
 }
 
@@ -162,7 +129,8 @@ RusokuCanBackend::RusokuCanBackend(const QString &name, QObject *parent)
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::RusokuCanBackend() - %ls",
                                                                 qUtf16Printable(name));
 
-    d->setupChannel(name.toLatin1());
+    //d->setupChannel(name.toLatin1());
+    d->setupChannel(name);
     d->setupDefaultConfigurations();
 
     std::function<void()> f = std::bind(&RusokuCanBackend::resetController, this);
@@ -291,11 +259,15 @@ void RusokuCanBackend::resetController()
 
 QCanBusDevice::CanBusStatus RusokuCanBackend::busStatus() const
 {
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::busStatus()");
+  //  qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::busStatus()");
+
+    return QCanBusDevice::CanBusStatus::Good;
+
+    ////////////////////////////////////////////////////////////////////////////////
 
     uint8_t status;
     int rc;
-    rc = ::can_status(d_ptr->handle, &status);
+    //rc = ::can_status(d_ptr->handle, &status);
 
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "handle: %d", d_ptr->handle);
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CAN_STATUS: %d", status);
@@ -383,46 +355,48 @@ RusokuCanBackendPrivate::RusokuCanBackendPrivate(RusokuCanBackend *q)
 bool RusokuCanBackendPrivate::open() {
     Q_Q(RusokuCanBackend);
 
+    QVariant param;
+    QString DeviceInitString;
+
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::open()");
 
     const int nominalBitrate = q->configurationParameter(QCanBusDevice::BitRateKey).toInt();
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- nominal bitrate = %d", nominalBitrate);
 
+    param = q->configurationParameter(QCanBusDevice::BitRateKey);
+
+    DeviceInitString.append("0;");
+    DeviceInitString.append(m_DeviceName);
+    DeviceInitString.append(";");
+    DeviceInitString.append(qUtf16Printable(param.toString()));
+    DeviceInitString.chop(3);
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN,"TouCAN init string: %ls", DeviceInitString.utf16());
+
+    handle = CanalOpen(DeviceInitString.toLatin1(),0);
+    if(handle <= 0)
+        return false;
+
+/*
     if ((handle = ::can_init(channelIndex, CANMODE_DEFAULT, NULL)) < CANERR_NOERROR){
         qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
         q->setError("Cannot init hardware", QCanBusDevice::ConnectionError);
         return false;
     }
-
-    can_bitrate_t bitrate;
-    switch (nominalBitrate) {
-        case 1000000: bitrate.index = (int32_t)CANBTR_INDEX_1M; break;
-        case 800000:  bitrate.index = (int32_t)CANBTR_INDEX_800K; break;
-        case 500000:  bitrate.index = (int32_t)CANBTR_INDEX_500K; break;
-        case 250000:  bitrate.index = (int32_t)CANBTR_INDEX_250K; break;
-        case 125000:  bitrate.index = (int32_t)CANBTR_INDEX_125K; break;
-        case 100000:  bitrate.index = (int32_t)CANBTR_INDEX_100K; break;
-        case 50000:   bitrate.index = (int32_t)CANBTR_INDEX_50K; break;
-        case 20000:   bitrate.index = (int32_t)CANBTR_INDEX_20K; break;
-        case 10000:   bitrate.index = (int32_t)CANBTR_INDEX_10K; break;
-        default:      bitrate.index = (int32_t)CANBTR_INDEX_500K; break;
-    }
-
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
+*/
+/*
     if ((::can_start(handle, &bitrate)) < CANERR_NOERROR) {
         qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
         q->setError("Cannot start hardware", QCanBusDevice::ConnectionError);
         return false;
     }
-
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
+*/
 
     writeNotifier = new RusokuCanWriteNotifier(this, q);
     writeNotifier->setInterval(1);
 
     readNotifier = new RusokuCanReadNotifier(this, q);
     readNotifier->setInterval(1);
-    readNotifier->start();
+//    readNotifier->start();
 
     isOpen = true;
     return true;
@@ -444,7 +418,8 @@ void RusokuCanBackendPrivate::close()
     delete readNotifier;
     readNotifier = nullptr;
 
-    ::can_exit(handle);
+    //::can_exit(handle);
+    CanalClose(handle);
 
     isOpen = false;
 }
@@ -453,34 +428,21 @@ bool RusokuCanBackendPrivate::setConfigurationParameter(int key, const QVariant 
 {
     Q_Q(RusokuCanBackend);
 
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::setConfigurationParameter()");
+
     return true;
 }
 
-struct TCanDevice {
-    int32_t adapter;
-    char *name;
-};
-
-static const can_board_t can_boards[CAN_MAX_HANDLES+1] = {  // list of supported CAN Interfaces
-        {TOUCAN_USB_CHANNEL0, (char *)"TouCAN-USB1"},
-        {TOUCAN_USB_CHANNEL1, (char *)"TouCAN-USB2"},
-        {TOUCAN_USB_CHANNEL2, (char *)"TouCAN-USB3"},
-        {TOUCAN_USB_CHANNEL3, (char *)"TouCAN-USB4"},
-        {TOUCAN_USB_CHANNEL4, (char *)"TouCAN-USB5"},
-        {TOUCAN_USB_CHANNEL5, (char *)"TouCAN-USB6"},
-        {TOUCAN_USB_CHANNEL6, (char *)"TouCAN-USB7"},
-        {TOUCAN_USB_CHANNEL7, (char *)"TouCAN-USB8"},
-        {EOF, NULL}
-};
-
-void RusokuCanBackendPrivate::setupChannel(const QByteArray &interfaceName)
+//void RusokuCanBackendPrivate::setupChannel(const QByteArray &interfaceName)
+void RusokuCanBackendPrivate::setupChannel(const QString &interfaceName)
 {
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::setupChannel()");
+    m_DeviceName = interfaceName;
 
-    const can_board_t *channel = can_boards;
-    while (channel->type != EOF && channel->name != interfaceName)
-        ++channel;
-    channelIndex = channel->type;
+//    const can_board_t *channel = can_boards;
+//    while (channel->type != EOF && channel->name != interfaceName)
+//        ++channel;
+//    channelIndex = channel->type;
 
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- channel index %d", channelIndex);
 }
@@ -530,7 +492,7 @@ void RusokuCanBackendPrivate::startWrite()
     }
 
     int st = CANERR_ONLINE;
-    st = ::can_write(handle, &message, 0);
+//    st = ::can_write(handle, &message, 0);
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- can_write");
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
 
@@ -548,12 +510,19 @@ void RusokuCanBackendPrivate::startRead()
 {
     Q_Q(RusokuCanBackend);
 
-    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::startRead()");
+    return;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::startRead()");
+
+    //DllExport   int WINAPI  CanalBlockingReceive(long handle, PCANALMSG pCanalMsg, unsigned long timeout);
 
     QVector<QCanBusFrame> newFrames;
     int st = CANERR_ONLINE;
     can_message_t message = {};
 
+    /*
     for(;;) {
         st = ::can_read(handle, &message, 0);
 
@@ -577,8 +546,11 @@ void RusokuCanBackendPrivate::startRead()
         frame.setTimeStamp(QCanBusFrame::TimeStamp::fromMicroSeconds(static_cast<qint64>(message.timestamp.tv_nsec)));
         newFrames.append(std::move(frame));
     }
+    */
+
+
     q->enqueueReceivedFrames(newFrames);
-    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RX frame list received()");
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RX frame list received()");
 }
 
 bool RusokuCanBackendPrivate::verifyBitRate(int bitrate)

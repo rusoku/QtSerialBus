@@ -80,7 +80,8 @@ public:
     bool open();
     void close();
     bool setConfigurationParameter(int key, const QVariant &value);
-    void setupChannel(const QByteArray &interfaceName);
+    //void setupChannel(const QByteArray &interfaceName);
+    void setupChannel(const QString &interfaceName);
     void setupDefaultConfigurations();
     QString systemErrorString(int errorCode);
     void startWrite();
@@ -92,8 +93,10 @@ public:
     bool isFlexibleDatarateEnabled = false;
     bool isOpen = false;
     int32_t channelIndex = -1;
-    int handle = -1;
+    long handle = -1;
     QTimer *writeNotifier = nullptr;
+
+    QString m_DeviceName;
 
 //#if defined(Q_OS_WIN32)
     //QWinEventNotifier *readNotifier = nullptr;
