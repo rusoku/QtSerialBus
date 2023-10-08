@@ -49,14 +49,14 @@ target_link_libraries(rusokucan
         Qt5::SerialBus
         )
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+#if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     add_compile_definitions(rusokucan QT_DEBUG)
-else()
-    add_compile_definitions(rusokucan QT_NO_DEBUG)
-    add_compile_definitions(rusokucan QT_NO_DEBUG_OUTPUT)
-    add_compile_definitions(rusokucan QT_NO_INFO_OUTPUT)
-    add_compile_definitions(rusokucan QT_NO_WARNING_OUTPUT)
-endif()
+#else()
+#    add_compile_definitions(rusokucan QT_NO_DEBUG)
+#    add_compile_definitions(rusokucan QT_NO_DEBUG_OUTPUT)
+#    add_compile_definitions(rusokucan QT_NO_INFO_OUTPUT)
+#    add_compile_definitions(rusokucan QT_NO_WARNING_OUTPUT)
+#endif()
 
 set_property(TARGET rusokucan PROPERTY
        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

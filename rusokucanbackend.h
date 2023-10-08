@@ -50,6 +50,12 @@
 
 QT_BEGIN_NAMESPACE
 
+#define EN_SILENT_MODE                  0x00000001
+#define EN_LOOPBACK_MODE                0x00000002
+#define DIS_AUTO_RETRANSMISSIONS        0x00000004
+#define EN_TERMINATOR                   0x00000008
+#define EN_AUTOMATIC_BUSOFF_RECOVERY    0x00000010
+
 class RusokuCanBackendPrivate;
 
 class RusokuCanBackend : public QCanBusDevice

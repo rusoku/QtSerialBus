@@ -159,7 +159,6 @@ bool RusokuCanBackend::open()
         qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- total keys: %d", keys.count());
 
         for (int key : keys) {
-
             if (key == QCanBusDevice::BitRateKey || key == QCanBusDevice::DataBitRateKey)
                 continue;
             const QVariant param = configurationParameter(key);
@@ -353,6 +352,9 @@ bool RusokuCanBackendPrivate::open() {
     const int nominalBitrate = q->configurationParameter(QCanBusDevice::BitRateKey).toInt();
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- nominal bitrate = %d", nominalBitrate);
 
+    const int sbusconfig = q->configurationParameter(QCanBusDevice::UserKey).toInt();
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- sbusconfig = %#010x", sbusconfig);
+
     param = q->configurationParameter(QCanBusDevice::BitRateKey);
 
     DeviceInitString.append("0;");
@@ -362,7 +364,7 @@ bool RusokuCanBackendPrivate::open() {
     DeviceInitString.chop(3);
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN,"TouCAN init string: %ls", DeviceInitString.utf16());
 
-    handle = CanalOpen(DeviceInitString.toLatin1(),0);
+    handle = CanalOpen(DeviceInitString.toLatin1(),sbusconfig & 6);
     if(handle <= 0)
         return false;
 
