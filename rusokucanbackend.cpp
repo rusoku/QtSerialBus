@@ -51,13 +51,6 @@
 
 #include <algorithm>
 
-
-//#ifdef Q_OS_WIN32
-//   include <QtCore/qwineventnotifier.h>
-//#else
-//   include <QtCore/qsocketnotifier.h>
-//#endif
-
 QT_BEGIN_NAMESPACE
 
 Q_DECLARE_LOGGING_CATEGORY(QT_CANBUS_PLUGINS_RUSOKUCAN)
@@ -91,20 +84,35 @@ QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::interfaces()");
 
     QList<QCanBusDeviceInfo> result;
-    canal_dev_list  can_device_list = {};
+    canal_dev_list  can_device_list{};
     quint16 canal_total_devices;
 
     CanalGetDeviceList(&can_device_list, 8);
     canal_total_devices = can_device_list.canDevCount;
 
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "Found total devices - %lu", canal_total_devices);
+/*
+
+    static QCanBusDeviceInfo createDeviceInfo(const QString &plugin,
+                                              const QString &name,
+                                              const QString &serialNumber,
+                                              const QString &description,
+                                              const QString &alias,
+                                              int channel,
+                                              bool isVirtual,
+                                              bool isFlexibleDataRateCapable);
+  */
 
     for(quint16 x = 0; x < canal_total_devices; x++){
 
-        result.append(std::move(createDeviceInfo(QLatin1String(can_device_list.canDevInfo[x].SerialNumber),
-                                                 QLatin1String("TouCAN adapter"),
-                                                 QLatin1String("RUSOKU"), x,
-                                                 false, false)));
+        result.append(QCanBusDevice::createDeviceInfo(QStringLiteral("rusokucan"),
+                                            QLatin1String(can_device_list.canDevInfo[x].SerialNumber),
+                                            QLatin1String(can_device_list.canDevInfo[x].SerialNumber),
+                                            QLatin1String("TouCAN USB adapter"),
+                                            QLatin1String(can_device_list.canDevInfo[x].SerialNumber),
+                                            x,
+                                            false,
+                                            false));
     }
 
     return result;
@@ -122,12 +130,6 @@ RusokuCanBackend::RusokuCanBackend(const QString &name, QObject *parent)
     //d->setupChannel(name.toLatin1());
     d->setupChannel(name);
     d->setupDefaultConfigurations();
-
-    std::function<void()> f = std::bind(&RusokuCanBackend::resetController, this);
-    setResetControllerFunction(f);
-
-    std::function<CanBusStatus()> g = std::bind(&RusokuCanBackend::busStatus, this);
-    setCanBusStatusGetter(g);
 }
 
 RusokuCanBackend::~RusokuCanBackend()
@@ -158,7 +160,7 @@ bool RusokuCanBackend::open()
 
         qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- total keys: %d", keys.count());
 
-        for (int key : keys) {
+        for (ConfigurationKey key : keys) {
             if (key == QCanBusDevice::BitRateKey || key == QCanBusDevice::DataBitRateKey)
                 continue;
             const QVariant param = configurationParameter(key);
@@ -188,7 +190,7 @@ void RusokuCanBackend::close()
     setState(QCanBusDevice::UnconnectedState);
 }
 
-void RusokuCanBackend::setConfigurationParameter(int key, const QVariant &value)
+void RusokuCanBackend::setConfigurationParameter(ConfigurationKey key, const QVariant &value)
 {
     Q_D(RusokuCanBackend);
 
@@ -488,7 +490,7 @@ void RusokuCanBackendPrivate::startRead()
     //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::startRead()");
 
     QVector<QCanBusFrame>   newFrames;
-    canalMsg    CanalMsg = {};
+    canalMsg    CanalMsg{};
     quint16     st = CANAL_ERROR_GENERIC;
     quint16     DataAvailableCount = 0;
 
