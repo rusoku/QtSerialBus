@@ -12,19 +12,12 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-#if(CMAKE_VERSION VERSION_LESS "3.7.0")
-#    set(CMAKE_INCLUDE_CURRENT_DIR ON)
-#endif()
-
-#set(CMAKE_PREFIX_PATH "C:/Qt/5.15.2/msvc2019_64")
-#set(CMAKE_PREFIX_PATH "C:/Qt/5.15.2/mingw81_64")
-#set(CMAKE_PREFIX_PATH "D:/Qt/6.6.1/msvc2019_64")
-#set(CMAKE_PREFIX_PATH "D:/Qt/6.6.1/mingw_64")
-
 #set(CMAKE_OSX_ARCHITECTURES x86_64)
 #set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64")
 #set(CMAKE_MACOSX_RPATH 1)
 #set(CMAKE_BUILD_RPATH "@executable_path/../Frameworks")
+
+set(CMAKE_PREFIX_PATH "C:/Qt/6.6.1/mingw_64")
 
 find_package(Qt6 COMPONENTS
         Core
@@ -62,12 +55,17 @@ endif()
 
 set_property(TARGET rusokucan PROPERTY
        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "qtrusokucanbus$<$<CONFIG:Debug>:d>")
-#set_target_properties(rusokucan PROPERTIES PREFIX "qt")
 
-#set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
-#set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
-#set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
+if (WIN32)
+    set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "rusokucanbus$<$<CONFIG:Debug>:d>")
+    set_target_properties(rusokucan PROPERTIES PREFIX "qt")
+elseif (APPLE)
+    #set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "qtrusokucanbus$<$<CONFIG:Debug>:d>")
+    #set_target_properties(rusokucan PROPERTIES LIBRARY_OUTPUT_NAME "qtrusokucanbus$<$<CONFIG:Debug>:d>")
+    set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
+    set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
+    set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
+endif()
 
 add_custom_command(TARGET rusokucan POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}/plugins/canbus)
