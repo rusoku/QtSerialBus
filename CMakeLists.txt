@@ -16,17 +16,17 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
     set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
-set(CMAKE_OSX_ARCHITECTURES x86_64)
+#set(CMAKE_OSX_ARCHITECTURES x86_64)
 
 #set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64"
 #                        "C:/Qt/5.15.2/msvc2019_64")
 
-set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64")
+set(CMAKE_PREFIX_PATH "~/Developer/Qt/6.6.1/macos")
 
 set(CMAKE_MACOSX_RPATH 1)
 set(CMAKE_BUILD_RPATH "@executable_path/../Frameworks")
 
-find_package(Qt5 COMPONENTS
+find_package(Qt6 COMPONENTS
         Core
         SerialBus
         REQUIRED)
@@ -47,8 +47,8 @@ set(OTHER_FILES
 add_library(rusokucan SHARED ${SOURCE_FILES} ${HEADERS_FILES} ${OTHER_FILES})
 
 target_link_libraries(rusokucan
-        Qt5::Core
-        Qt5::SerialBus)
+        Qt6::Core
+        Qt6::SerialBus)
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     add_compile_definitions(rusokucan QT_DEBUG)
