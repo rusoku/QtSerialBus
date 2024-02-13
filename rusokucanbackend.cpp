@@ -141,8 +141,26 @@ QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
                     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_VENDOR_NAME: %s", info.m_szVendorName);
 
                     result.append(std::move(createDeviceInfo(QLatin1String(info.m_szDeviceName), QLatin1String(string),
+                                                             QLatin1String(info.m_szVendorName), info.m_nChannelNo,
+                                                             false, false)));
+/*
+                    result.append(std::move(createDeviceInfo(QLatin1String(info.m_szDeviceName), QLatin1String(string),
                                                           QLatin1String(info.m_szVendorName), info.m_nChannelNo,
                                                           false, false)));
+                    static QCanBusDeviceInfo createDeviceInfo(const QString &plugin,
+                                                              const QString &name,
+                                                              bool isVirtual,
+                                                              bool isFlexibleDataRateCapable);
+                    static QCanBusDeviceInfo createDeviceInfo(const QString &plugin,
+                                                              const QString &name,
+                                                              const QString &serialNumber,
+                                                              const QString &description,
+                                                              const QString &alias,
+                                                              int channel,
+                                                              bool isVirtual,
+                                                              bool isFlexibleDataRateCapable);
+                    */
+
                 }
             }
         }
@@ -161,11 +179,11 @@ RusokuCanBackend::RusokuCanBackend(const QString &name, QObject *parent)
     d->setupChannel(name.toLatin1());
     d->setupDefaultConfigurations();
 
-    std::function<void()> f = std::bind(&RusokuCanBackend::resetController, this);
-    setResetControllerFunction(f);
+    //std::function<void()> f = std::bind(&RusokuCanBackend::resetController, this);
+    //setResetControllerFunction(f);
 
-    std::function<CanBusStatus()> g = std::bind(&RusokuCanBackend::busStatus, this);
-    setCanBusStatusGetter(g);
+    //std::function<CanBusStatus()> g = std::bind(&RusokuCanBackend::busStatus, this);
+    //setCanBusStatusGetter(g);
 }
 
 RusokuCanBackend::~RusokuCanBackend()
@@ -194,9 +212,9 @@ bool RusokuCanBackend::open()
         // the bitrate cannot be changed after opening the device
         const auto keys = configurationKeys();
 
-        qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- total keys: %d", keys.count());
+        qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- total keys: %lld", keys.count());
 
-        for (int key : keys) {
+        for (ConfigurationKey key : keys) {
 
             if (key == QCanBusDevice::BitRateKey || key == QCanBusDevice::DataBitRateKey)
                 continue;
@@ -227,7 +245,7 @@ void RusokuCanBackend::close()
     setState(QCanBusDevice::UnconnectedState);
 }
 
-void RusokuCanBackend::setConfigurationParameter(int key, const QVariant &value)
+void RusokuCanBackend::setConfigurationParameter(ConfigurationKey key, const QVariant &value)
 {
     Q_D(RusokuCanBackend);
 

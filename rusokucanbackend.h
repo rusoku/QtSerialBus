@@ -64,7 +64,8 @@ public:
     bool open() override;
     void close() override;
 
-    void setConfigurationParameter(int key, const QVariant &value) override;
+    void setConfigurationParameter(ConfigurationKey key, const QVariant &value) override;
+    //virtual void setConfigurationParameter(ConfigurationKey key, const QVariant &value);
 
     bool writeFrame(const QCanBusFrame &newData) override;
 
@@ -74,7 +75,7 @@ public:
     static QList<QCanBusDeviceInfo> interfaces();
 
 private:
-    void resetController();
+    void resetController() override;
     CanBusStatus busStatus() const;
 
     RusokuCanBackendPrivate * const d_ptr;

@@ -7,16 +7,16 @@
         <entry key="Debug-System">
           <value>
             <PerProfileState>
-              <option name="myQmlPath" value="$USER_HOME$/Developer/Qt/5.15.2/clang_64/qml" />
-              <option name="myQtBinPath" value="$USER_HOME$/Developer/Qt/5.15.2/clang_64/bin" />
+              <option name="myQmlPath" value="$USER_HOME$/Developer/Qt/6.6.1/macos/./qml" />
+              <option name="myQtBinPath" value="$USER_HOME$/Developer/Qt/6.6.1/macos/bin" />
             </PerProfileState>
           </value>
         </entry>
         <entry key="Release-System">
           <value>
             <PerProfileState>
-              <option name="myQmlPath" value="$USER_HOME$/Developer/Qt/5.15.2/clang_64/qml" />
-              <option name="myQtBinPath" value="$USER_HOME$/Developer/Qt/5.15.2/clang_64/bin" />
+              <option name="myQmlPath" value="$USER_HOME$/Developer/Qt/6.6.1/macos/./qml" />
+              <option name="myQtBinPath" value="$USER_HOME$/Developer/Qt/6.6.1/macos/bin" />
             </PerProfileState>
           </value>
         </entry>
