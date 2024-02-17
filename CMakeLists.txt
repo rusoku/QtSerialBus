@@ -17,12 +17,7 @@ if(CMAKE_VERSION VERSION_LESS "3.7.0")
 endif()
 
 #set(CMAKE_OSX_ARCHITECTURES x86_64)
-
-#set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64"
-#                        "C:/Qt/5.15.2/msvc2019_64")
-
-set(CMAKE_PREFIX_PATH "~/Developer/Qt/6.6.1/macos")
-
+set(CMAKE_PREFIX_PATH "~/Qt/6.6.1/macos")
 set(CMAKE_MACOSX_RPATH 1)
 set(CMAKE_BUILD_RPATH "@executable_path/../Frameworks")
 
@@ -50,14 +45,14 @@ target_link_libraries(rusokucan
         Qt6::Core
         Qt6::SerialBus)
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    add_compile_definitions(rusokucan QT_DEBUG)
-else()
+#if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+#    add_compile_definitions(rusokucan QT_DEBUG)
+#else()
     add_compile_definitions(rusokucan QT_NO_DEBUG)
     add_compile_definitions(rusokucan QT_NO_DEBUG_OUTPUT)
     add_compile_definitions(rusokucan QT_NO_INFO_OUTPUT)
     add_compile_definitions(rusokucan QT_NO_WARNING_OUTPUT)
-endif()
+#endif()
 
 set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
 set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)

@@ -140,27 +140,16 @@ QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
                     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_NAME: %s", info.m_szDeviceName);
                     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "CANPROP_GET_CHANNEL_VENDOR_NAME: %s", info.m_szVendorName);
 
-                    result.append(std::move(createDeviceInfo(QLatin1String(info.m_szDeviceName), QLatin1String(string),
-                                                             QLatin1String(info.m_szVendorName), info.m_nChannelNo,
-                                                             false, false)));
-/*
-                    result.append(std::move(createDeviceInfo(QLatin1String(info.m_szDeviceName), QLatin1String(string),
-                                                          QLatin1String(info.m_szVendorName), info.m_nChannelNo,
-                                                          false, false)));
-                    static QCanBusDeviceInfo createDeviceInfo(const QString &plugin,
-                                                              const QString &name,
-                                                              bool isVirtual,
-                                                              bool isFlexibleDataRateCapable);
-                    static QCanBusDeviceInfo createDeviceInfo(const QString &plugin,
-                                                              const QString &name,
-                                                              const QString &serialNumber,
-                                                              const QString &description,
-                                                              const QString &alias,
-                                                              int channel,
-                                                              bool isVirtual,
-                                                              bool isFlexibleDataRateCapable);
-                    */
-
+                    result.append(std::move(createDeviceInfo(QLatin1String("rusokucan"),
+                                                            QLatin1String(info.m_szDeviceName),
+                                                            QLatin1String(string), // serial number
+                                                            //QLatin1String(info.m_szVendorName),
+                                                            //QLatin1String(info.m_szDeviceName),
+                                                            QLatin1String("RUSOKU TouCAN adapter"),
+                                                            QLatin1String(info.m_szDeviceName),
+                                                            info.m_nChannelNo,
+                                                            false,
+                                                            false)));
                 }
             }
         }
@@ -401,6 +390,7 @@ bool RusokuCanBackendPrivate::open() {
 
     const int nominalBitrate = q->configurationParameter(QCanBusDevice::BitRateKey).toInt();
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- nominal bitrate = %d", nominalBitrate);
+    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- channelIndex = %d", channelIndex);
 
     if ((handle = ::can_init(channelIndex, CANMODE_DEFAULT, NULL)) < CANERR_NOERROR){
         qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
@@ -424,7 +414,7 @@ bool RusokuCanBackendPrivate::open() {
 
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "--- handle = %d", handle);
     if ((::can_start(handle, &bitrate)) < CANERR_NOERROR) {
-        qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot init hardware");
+        qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot start hardware");
         q->setError("Cannot start hardware", QCanBusDevice::ConnectionError);
         return false;
     }
@@ -489,6 +479,7 @@ static const can_board_t can_boards[CAN_MAX_HANDLES+1] = {  // list of supported
 
 void RusokuCanBackendPrivate::setupChannel(const QByteArray &interfaceName)
 {
+
     qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackendPrivate::setupChannel()");
 
     const can_board_t *channel = can_boards;
