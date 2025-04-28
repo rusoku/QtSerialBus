@@ -7,7 +7,7 @@ project(rusokucan
         HOMEPAGE_URL "https://www.rusoku.com"
         LANGUAGES CXX C)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -17,7 +17,7 @@ set(CMAKE_AUTOUIC ON)
 #set(CMAKE_MACOSX_RPATH 1)
 #set(CMAKE_BUILD_RPATH "@executable_path/../Frameworks")
 
-set(CMAKE_PREFIX_PATH "C:/Qt/6.6.1/mingw_64")
+set(CMAKE_PREFIX_PATH "C:/Qt/6.9.0/llvm-mingw_64")
 
 find_package(Qt6 COMPONENTS
         Core
