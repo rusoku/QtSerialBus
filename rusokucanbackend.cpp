@@ -3,8 +3,8 @@
 ** Copyright (C) 2017 Denis Shienkov <denis.shienkov@gmail.com>
 ** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing/
-** Copyright (C) 2023 Gediminas Simanskis <gediminas@rusoku.com>
-** Copyright (C) 2023 Rusoku technologijos UAB.
+** Copyright (C) 2023-2025 Gediminas Simanskis <gediminas@rusoku.com>
+** Copyright (C) 2023-2025 Rusoku technologijos UAB.
 **
 ** This file is part of the QtSerialBus module of the Qt Toolkit.
 **
@@ -64,9 +64,6 @@ bool RusokuCanBackend::canCreate(QString *errorReason)
 #ifdef LINK_LIBRTSTATIC
     return true;
 #else
-
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::canCreate() - load dll library");
-
     static bool symbolsResolved = resolveRusokuCanSymbols(rusokucanLibrary());
     if (Q_UNLIKELY(!symbolsResolved)) {
         qCCritical(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot load library: %ls",
@@ -81,9 +78,10 @@ bool RusokuCanBackend::canCreate(QString *errorReason)
 
 QList<QCanBusDeviceInfo> RusokuCanBackend::interfaces()
 {
-    qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::interfaces()");
+    //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RusokuCanBackend::interfaces()");
 
     QList<QCanBusDeviceInfo> result;
+
     canal_dev_list  can_device_list{};
     quint16 canal_total_devices;
 
@@ -492,21 +490,14 @@ void RusokuCanBackendPrivate::startRead()
     QVector<QCanBusFrame>   newFrames;
     canalMsg    CanalMsg{};
     quint16     st = CANAL_ERROR_GENERIC;
-    quint16     DataAvailableCount = 0;
 
-    DataAvailableCount = CanalDataAvailable(handle);
-
-    if(DataAvailableCount <= 0)
-        return;
-
-    for(quint16 x = 0; x < DataAvailableCount; x++ ) {
-
+    for(;;) {
         st = CanalReceive(handle, &CanalMsg);
 
         if (st != CANAL_ERROR_SUCCESS) {
             //q->setError(systemErrorString(st), QCanBusDevice::ReadError);
             //qCWarning(QT_CANBUS_PLUGINS_RUSOKUCAN, "Cannot read frame, err_code = %d", st);
-            return;
+            break;
         }
 
         const quint8 size = CanalMsg.sizeData;
@@ -525,10 +516,9 @@ void RusokuCanBackendPrivate::startRead()
         frame.setTimeStamp(QCanBusFrame::TimeStamp::fromMicroSeconds(static_cast<qint64>(CanalMsg.timestamp)));
 
         newFrames.append(std::move(frame));
-        q->enqueueReceivedFrames(newFrames);
-
         //qCInfo(QT_CANBUS_PLUGINS_RUSOKUCAN, "RX frame list received()");
     }
+    q->enqueueReceivedFrames(newFrames);
 }
 
 bool RusokuCanBackendPrivate::verifyBitRate(int bitrate)
