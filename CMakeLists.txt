@@ -53,19 +53,24 @@ else()
     add_compile_definitions(rusokucan QT_NO_WARNING_OUTPUT)
 endif()
 
-set_property(TARGET rusokucan PROPERTY
-       MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+#set_property(TARGET rusokucan PROPERTY
+#       MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 if (WIN32)
-    set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "rusokucanbus$<$<CONFIG:Debug>:d>")
+#    set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "rusokucanbus$<$<CONFIG:Debug>:d>")
     set_target_properties(rusokucan PROPERTIES PREFIX "qt")
-elseif (APPLE)
+#elseif (APPLE)
     #set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "qtrusokucanbus$<$<CONFIG:Debug>:d>")
     #set_target_properties(rusokucan PROPERTIES LIBRARY_OUTPUT_NAME "qtrusokucanbus$<$<CONFIG:Debug>:d>")
-    set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
-    set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
-    set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
+#    set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
+#    set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
+#    set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
 endif()
 
-add_custom_command(TARGET rusokucan POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}/plugins/canbus)
+if (WIN32)
+    add_custom_command(TARGET rusokucan POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}\\plugins\\canbus)
+else()
+    add_custom_command(TARGET rusokucan POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}/plugins/canbus)
+endif()
