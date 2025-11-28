@@ -7,7 +7,7 @@ project(rusokucan
         HOMEPAGE_URL "https://www.rusoku.com"
         LANGUAGES CXX C)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -16,8 +16,7 @@ set(CMAKE_AUTOUIC ON)
 #set(CMAKE_PREFIX_PATH "~/Qt/5.15.2/clang_64")
 #set(CMAKE_MACOSX_RPATH 1)
 #set(CMAKE_BUILD_RPATH "@executable_path/../Frameworks")
-
-set(CMAKE_PREFIX_PATH "C:/Qt/6.9.0/llvm-mingw_64")
+#set(CMAKE_PREFIX_PATH "D:/Qt/6.10.1/llvm-mingw_64")
 
 find_package(Qt6 COMPONENTS
         Core
@@ -44,33 +43,33 @@ target_link_libraries(rusokucan
         Qt6::SerialBus
         )
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+#if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     add_compile_definitions(rusokucan QT_DEBUG)
-else()
-    add_compile_definitions(rusokucan QT_NO_DEBUG)
-    add_compile_definitions(rusokucan QT_NO_DEBUG_OUTPUT)
-    add_compile_definitions(rusokucan QT_NO_INFO_OUTPUT)
-    add_compile_definitions(rusokucan QT_NO_WARNING_OUTPUT)
-endif()
+#else()
+#   add_compile_definitions(rusokucan QT_NO_DEBUG)
+#   add_compile_definitions(rusokucan QT_NO_DEBUG_OUTPUT)
+#   add_compile_definitions(rusokucan QT_NO_INFO_OUTPUT)
+#   add_compile_definitions(rusokucan QT_NO_WARNING_OUTPUT)
+#endif()
 
 #set_property(TARGET rusokucan PROPERTY
 #       MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 if (WIN32)
-#    set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "rusokucanbus$<$<CONFIG:Debug>:d>")
+    set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "rusokucanbus$<$<CONFIG:Debug>:d>")
     set_target_properties(rusokucan PROPERTIES PREFIX "qt")
-#elseif (APPLE)
+elseif (APPLE)
     #set_target_properties(rusokucan PROPERTIES OUTPUT_NAME "qtrusokucanbus$<$<CONFIG:Debug>:d>")
     #set_target_properties(rusokucan PROPERTIES LIBRARY_OUTPUT_NAME "qtrusokucanbus$<$<CONFIG:Debug>:d>")
-#    set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
-#    set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
-#    set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
+    set_property(TARGET rusokucan PROPERTY MACHO_CURRENT_VERSION 1.0.0)
+    set_property(TARGET rusokucan PROPERTY MACHO_COMPATABILITY_VERSION 1.0.0)
+    set_property(TARGET rusokucan PROPERTY VERSION 1.0.0)
 endif()
 
 if (WIN32)
     add_custom_command(TARGET rusokucan POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}\\plugins\\canbus)
-else()
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}\\plugins\\canbus)
+elseif (APPLE)
     add_custom_command(TARGET rusokucan POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:rusokucan> ${CMAKE_PREFIX_PATH}/plugins/canbus)
 endif()
